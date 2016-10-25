@@ -24,10 +24,32 @@ def read_dag():
     return dag
 
 
+def get_source(dag):
+    """Return the source of the DAG."""
+    # FIXME: for now, we're forcing the source to have the lowest label
+    return min(dag.nodes())
+
+
+def get_sink(dag):
+    """Return the sink of the DAG."""
+    # FIXME: for now, we're forcing the sink to have the highest label
+    return max(dag.nodes())
+
+
 def parallel_reduce_all(dag, node):
     """Perform as many parallel reductions as possible on edges incident to node."""
-    for edge in edges_incident_to(node) + edges_incident_from(node):
-            parallel_reduce(dag, edge)
+    # TODO: for every out-neighbor of node, remove all multi-edges of the
+    # form node -> neighbor, and then just add a single one.
+    # TODO: for every in-neighbor of node, remove all multi-edges of the
+    # form neighbor -> node, and then just add a single one.
+    pass
+
+
+def parallel_reduce(dag, edge1, edge2):
+    """Modify the dag so that parallel edges edge1 and edge2 are merged into
+    one, which is returned."""
+    dag.remove_edge(edge2)
+    return edge1
 
 
 def decompose(dag):
@@ -67,7 +89,11 @@ def decompose(dag):
     # (in order to eliminate any multiple edges between them) before
     # stopping.
     parallel_reduce_all(dag, source) # modifies dag!
-    parallel_reduce_all(dag, sink) # modifies dag!
+
+    # The following line is not necessary as at this point there are no
+    # more nodes other than source and sink, and all edges must be parallel
+    # between them.
+    # parallel_reduce_all(dag, sink)
 
     # The unsatisfied list becomes empty, either because all vertices
     # (except source and sink) have been deleted by series reductions or
