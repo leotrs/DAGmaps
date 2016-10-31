@@ -22,11 +22,9 @@
 *.out
 *.synctex.gz
 *.Rhistory
-*.pdf
 *.Rdata
 *.dat
 *.eps
-*.png
 *.pyc
 
 # Ignore Mac DS_Store files
