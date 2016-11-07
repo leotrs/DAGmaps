@@ -9,8 +9,10 @@ parallel digraphs. SIAM Journal on Computing, 11(2):298–313, 1982.
 
 """
 
+import json
 from itertools import groupby
 import networkx as nx
+from networkx.readwrite import json_graph
 
 
 class DAG(nx.MultiDiGraph):
@@ -77,7 +79,7 @@ class DAG(nx.MultiDiGraph):
                 in grouped_edges]
 
 
-class DecompositionTree(nx.Graph):
+class DecompositionTree(nx.DiGraph):
     """DecompositionTree is an nx.Graph with methods for adding P-nodes and S-nodes."""
 
     def __init__(self, *args, **kwargs):
@@ -209,7 +211,7 @@ class DecompositionTree(nx.Graph):
         """
         if parent is None:
             parent = dag.get_sole_parent(node)
-        if child  is None:
+        if child is None:
             child = dag.get_sole_child(node)
 
         # print('S-reducing {}-{}-{}'.format(parent, node, child))
@@ -240,7 +242,7 @@ class DecompositionTree(nx.Graph):
         # (from) it as it is possible.
         while to_visit:
             node = to_visit.pop()
-            self.parallel_reduce(dag, node) # modifies dag!
+            self.parallel_reduce(dag, node)  # modifies dag!
 
             # Now we have either 1. the vertex has a single entering edge and a
             # single exiting edge, or 2. the vertex still has at least two
@@ -256,7 +258,7 @@ class DecompositionTree(nx.Graph):
                 if child not in [source, sink]:
                     to_visit.add(child)
 
-                self.series_reduce(dag, node, parent, child) # modifies dag!
+                self.series_reduce(dag, node, parent, child)  # modifies dag!
 
             else:
                 # We've found an invalid node.  This is not a TTSP.
@@ -267,7 +269,7 @@ class DecompositionTree(nx.Graph):
         # which point the same process is applied to the source and the sink
         # (in order to eliminate any multiple edges between them) before
         # stopping.
-        self.parallel_reduce(dag, source) # modifies dag!
+        self.parallel_reduce(dag, source)  # modifies dag!
 
         # The following line is not necessary as at this point there are no
         # more nodes other than source and sink, and all edges must be parallel
@@ -291,7 +293,7 @@ class DecompositionTree(nx.Graph):
 
     def _merge_pnodes_from(self, node, parent=None):
         """Traverse in post-order and merge all P-nodes starting from node."""
-        children = self.neighbors(node)
+        children = self.predecessors(node)
 
         if not children:
             return
@@ -304,7 +306,7 @@ class DecompositionTree(nx.Graph):
 
         if self.is_pnode(node):
             for child_pnode in (c for c in children if self.is_pnode(c)):
-                grandchildren = self.neighbors(child_pnode)
+                grandchildren = self.predecessors(child_pnode)
                 grandchildren.remove(node)
 
                 self.remove_edges_from((child_pnode, gc) for gc in grandchildren)
@@ -314,11 +316,16 @@ class DecompositionTree(nx.Graph):
                 self.remove_node(child_pnode)
 
 
-
 def main():
     """Read a DAG from stdin, and decompose it if possible."""
     tree = DecompositionTree()
     dag = DAG.read_dag()
+
+    jsondata = json_graph.node_link_data(dag)
+    print(jsondata)
+    with open('graph.json', 'w') as outfile:
+        json.dump(jsondata, outfile, indent=4)
+
     tree.decompose(dag)
     tree.merge_pnodes()
 
@@ -329,6 +336,12 @@ def main():
     print('Edges in tree ({}): '.format(tree.number_of_edges()))
     for edge in tree.edges():
         print(edge)
+
+    jsondata = json_graph.node_link_data(tree)
+    jsondata['root'] = tree.root
+    print(jsondata)
+    with open('tree.json', 'w') as outfile:
+        json.dump(jsondata, outfile, indent=4)
 
 
 if __name__ == '__main__':
