@@ -15,8 +15,8 @@
 
      /*** Basic stuff ***/
 
-     var width = 300,
-         height = 400;
+     var width = 1200,
+         height = 900;
 
      var svg = d3.select(".chart")
                  .attr("width", width)
@@ -31,7 +31,7 @@
          var children = [],
              idx = tree.nodes.map(function(e) { return e.id; }).indexOf(node);
 
-         for(var i=0; i < tree.links.length; i++) {
+         for (var i=0; i < tree.links.length; i++) {
              if(tree.links[i].source == idx)
                  children.push(tree.links[i].target)
          }
@@ -53,16 +53,33 @@
      function layout(rect, sizes, labels) {
          /* Find a partition of rect into rectangles Ri where area(Ri)
             is proportional to sizes[i]. */
+         var padding = 10;
          var rects = [];
          var num_rects = sizes.length;
-         var rect_size = rect.height / num_rects;
-         for (var i=0; i < num_rects; i++) {
-             rects.push({"x": rect.x,
-                         "y": rect.y + rect_size * i,
-                         "width": rect.width,
-                         "height": rect.height / num_rects,
-                         "label": labels[i]});
+
+         if (rect.height > rect.width) {
+             var rect_size = (rect.height - 2*padding) / num_rects;
+
+             for (var i=0; i < num_rects; i++) {
+                 rects.push({"x": rect.x + padding,
+                             "y": rect.y + padding + rect_size * i,
+                             "width": (rect.width - 2*padding),
+                             "height": (rect.height - 2*padding) / num_rects,
+                             "label": labels[i]});
+             }
          }
+         else {
+             var rect_size = (rect.width - 2*padding) / num_rects;
+
+             for (var i=0; i < num_rects; i++) {
+                 rects.push({"y": rect.y + padding,
+                             "x": rect.x + padding + rect_size * i,
+                             "height": (rect.height - 2*padding),
+                             "width": (rect.width - 2*padding) / num_rects,
+                             "label": labels[i]});
+             }
+         }
+
          return rects;
      }
 
@@ -77,7 +94,7 @@
         source and the sink. */
 
      function processNode(tree, node, rects, sizes) {
-         /* console.log('processing: ' + node);*/
+         console.log('processing: ' + node);
          var children = getChildren(tree, node);
 
          /* 6. If u is an S-node then
@@ -88,8 +105,29 @@
              /* console.log('S!');*/
 
              /* Every S-node has exactly children. */
-             rects[tree.nodes[children[0]].id] = rects[node];
-             rects[tree.nodes[children[1]].id] = rects[node];
+             var id1 = tree.nodes[children[0]].id,
+                 id2 = tree.nodes[children[1]].id;
+
+             /* rects[id1] = Object.assign({}, rects[node]);
+              * rects[id1].label = id1;
+
+              * rects[id2] = Object.assign({}, rects[node]);
+              * rects[id2].label = id2;*/
+
+             var childrenSizes = children.map(function(c) {
+                 return sizes[tree.nodes[c].id];
+             });
+
+             var childrenLabels = children.map(function(c) {
+                 return tree.nodes[c].id;
+             });
+
+             var childrenRects = layout(rects[node], childrenSizes, childrenLabels);
+
+             for (var i=0; i < children.length; i++) {
+                 rects[tree.nodes[children[i]].id] = childrenRects[i];
+             };
+
          }
 
          /* 7. If u is a P-node then
@@ -121,6 +159,7 @@
 
      d3.json('graph.json', function(error, graph) {
          if (error) throw error;
+         /* console.log(graph);*/
 
          d3.json('tree.json', function(error, tree) {
              if (error) throw error;
@@ -133,15 +172,24 @@
 
              /* 4. Assign rectangle R to the root node of T. */
              var rects = {};
-             rects[tree.root] = {"x": 0, "y": 0, "width": width, "height": height};
+             rects[tree.root] = {"label": tree.root,
+                                 "x": 0, "y": 0,
+                                 "width": width, "height": height};
 
              /* 5. Let u be the current node of T and Ru the rectangle
                 assigned to it. */
              var stack = [tree.root],
                  node, rect, src, tgt;
 
+             var counter = 0;
+
              /* Steps 6, 7, 8 are recursive over all nodes. */
              while (stack.length > 0) {
+                 counter += 1;
+                 /* if (counter > 6) {
+                  *     break;
+                  * }*/
+
                  node = stack.pop();
                  rect = rects[node];
 

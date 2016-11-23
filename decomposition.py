@@ -35,13 +35,15 @@ class DAG(nx.MultiDiGraph):
 
     def get_source(self):
         """Return the source of the DAG."""
-        # FIXME: for now, we're forcing the source to have the lowest label
-        return min(self.nodes())
+        indegree_zero = [n for n in self.nodes() if self.in_degree(n) == 0]
+        assert len(indegree_zero) == 1, 'More than one source.'
+        return indegree_zero[0]
 
     def get_sink(self):
         """Return the sink of the DAG."""
-        # FIXME: for now, we're forcing the sink to have the highest label
-        return max(self.nodes())
+        outdegree_zero = [n for n in self.nodes() if self.out_degree(n) == 0]
+        assert len(outdegree_zero) == 1, 'More than one sink.'
+        return outdegree_zero[0]
 
     def get_sole_parent(self, node):
         """Return the parent of node, given that it only has one predecessor."""
@@ -234,14 +236,17 @@ class DecompositionTree(nx.DiGraph):
         source = dag.get_source()
         sink = dag.get_sink()
         # print('Source: {}, sink: {}'.format(source, sink))
-        to_visit = set(dag.nodes()).difference(source, sink)
+        to_visit = list(set(dag.nodes()).difference({source, sink}))
+        # to_visit = list(set(dag.neighbors(source)).difference(sink))
         # print('to visit: {}'.format(to_visit))
 
         # The algorithm proceeds by removing any vertex v from this list and
         # performing as many parallel reductions on the edges incident to
         # (from) it as it is possible.
         while to_visit:
+            # print('to visit: {}'.format(to_visit))
             node = to_visit.pop()
+            # print(node)
             self.parallel_reduce(dag, node)  # modifies dag!
 
             # Now we have either 1. the vertex has a single entering edge and a
@@ -253,17 +258,24 @@ class DecompositionTree(nx.DiGraph):
             if dag.in_degree()[node] == 1 and dag.out_degree()[node] == 1:
                 parent = dag.get_sole_parent(node)
                 child = dag.get_sole_child(node)
-                if parent not in [source, sink]:
-                    to_visit.add(parent)
-                if child not in [source, sink]:
-                    to_visit.add(child)
+                # print('p: {}, c:{}'.format(parent, child))
+                if parent not in [source, sink] and parent not in to_visit:
+                    to_visit.append(parent)
+                if child not in [source, sink] and child not in to_visit:
+                    to_visit.append(child)
 
                 self.series_reduce(dag, node, parent, child)  # modifies dag!
 
             else:
-                # We've found an invalid node.  This is not a TTSP.
-                print('{} is invalid.'.format(node))
-                return
+                # In the second case, we need to visit every other possible
+                # node before being certain that we've arrived at an
+                # invalid node.
+                if to_visit:
+                   to_visit = [node] + to_visit
+                else:
+                    # We've found an invalid node.  This is not a TTSP.
+                    print('{} is invalid.'.format(node))
+                    return
 
         # This process is repeated until the unsatisfied list becomes empty, at
         # which point the same process is applied to the source and the sink
@@ -281,7 +293,7 @@ class DecompositionTree(nx.DiGraph):
         # because every remaining vertex has two distinct in-neighbors or two
         # distinct out-neighbors. In the first case the DAG is TTSP; in the
         # second it is not.
-        print('Remaining edges in  dag: {}'.format(dag.edges()))
+        # print('Remaining edges in  dag: {}'.format(dag.edges()))
 
     def is_pnode(self, node):
         """Return whether or not node is a P-node."""
@@ -322,24 +334,24 @@ def main():
     dag = DAG.read_dag()
 
     jsondata = json_graph.node_link_data(dag)
-    print(jsondata)
+    # print(jsondata)
     with open('graph.json', 'w') as outfile:
         json.dump(jsondata, outfile, indent=4)
 
     tree.decompose(dag)
     tree.merge_pnodes()
 
-    print('Nodes in tree ({}): '.format(tree.number_of_nodes()))
-    for node in tree.nodes():
-        print(node)
+    # print('Nodes in tree ({}): '.format(tree.number_of_nodes()))
+    # for node in tree.nodes():
+    #     print(node)
 
-    print('Edges in tree ({}): '.format(tree.number_of_edges()))
-    for edge in tree.edges():
-        print(edge)
+    # print('Edges in tree ({}): '.format(tree.number_of_edges()))
+    # for edge in tree.edges():
+    #     print(edge)
 
     jsondata = json_graph.node_link_data(tree)
     jsondata['root'] = tree.root
-    print(jsondata)
+    # print(jsondata)
     with open('tree.json', 'w') as outfile:
         json.dump(jsondata, outfile, indent=4)
 
