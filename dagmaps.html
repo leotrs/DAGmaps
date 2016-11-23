@@ -9,13 +9,13 @@
     <title>DAGmaps</title>
   </head>
   <body>
-    <svg class="chart"></svg>
+    <svg class="chart" style="display: block; margin: auto"></svg>
     <script type="text/javascript">
 
 
      /*** Basic stuff ***/
 
-     var width = 360,
+     var width = 300,
          height = 400;
 
      var svg = d3.select(".chart")
@@ -48,25 +48,21 @@
      };
 
 
-
      /*** DAGmap ***/
 
-     function layout(rect, sizes) {
+     function layout(rect, sizes, labels) {
          /* Find a partition of rect into rectangles Ri where area(Ri)
             is proportional to sizes[i]. */
-         /* Cut across the largest dimension (FIXME). */
          var rects = [];
-
          var num_rects = sizes.length;
          var rect_size = rect.height / num_rects;
-
          for (var i=0; i < num_rects; i++) {
              rects.push({"x": rect.x,
                          "y": rect.y + rect_size * i,
                          "width": rect.width,
-                         "height": rect.height / num_rects});
+                         "height": rect.height / num_rects,
+                         "label": labels[i]});
          }
-
          return rects;
      }
 
@@ -109,7 +105,11 @@
                  return sizes[tree.nodes[c].id];
              });
 
-             var childrenRects = layout(rects[node], childrenSizes);
+             var childrenLabels = children.map(function(c) {
+                 return tree.nodes[c].id;
+             });
+
+             var childrenRects = layout(rects[node], childrenSizes, childrenLabels);
 
              for (var i=0; i < children.length; i++) {
                  rects[tree.nodes[children[i]].id] = childrenRects[i];
@@ -172,12 +172,12 @@
              var svgrects = svg.selectAll("rect")
                                .data(rect_array)
                                .enter().append("rect")
-                               .attr("x", function(d) { return d.x })
-                               .attr("y", function(d) { return d.y })
-                               .attr("width", function(d) { return d.width })
-                               .attr("height", function(d) { return d.height })
-                               .style("fill", function(d) { return color(d.y); });
-             console.log(svgrects);
+                               .attr("id", function(d) {return d.label; })
+                               .attr("x", function(d) { return d.x; })
+                               .attr("y", function(d) { return d.y; })
+                               .attr("width", function(d) { return d.width; })
+                               .attr("height", function(d) { return d.height; })
+                               .style("fill", function(d) { return color(d.y + d.x); });
          });
      });
 
