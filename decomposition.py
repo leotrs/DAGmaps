@@ -305,21 +305,17 @@ class DecompositionTree(nx.DiGraph):
 
     def _merge_pnodes_from(self, node, parent=None):
         """Traverse in post-order and merge all P-nodes starting from node."""
-        children = self.predecessors(node)
+        children = self.successors(node)
 
         if not children:
             return
-
-        if parent in children:
-            children.remove(parent)
 
         for child in children:
             self._merge_pnodes_from(child, node)
 
         if self.is_pnode(node):
             for child_pnode in (c for c in children if self.is_pnode(c)):
-                grandchildren = self.predecessors(child_pnode)
-                grandchildren.remove(node)
+                grandchildren = self.successors(child_pnode)
 
                 self.remove_edges_from((child_pnode, gc) for gc in grandchildren)
                 self.add_edges_from((node, gc) for gc in grandchildren)
@@ -330,28 +326,18 @@ class DecompositionTree(nx.DiGraph):
 
 def main():
     """Read a DAG from stdin, and decompose it if possible."""
-    tree = DecompositionTree()
     dag = DAG.read_dag()
 
     jsondata = json_graph.node_link_data(dag)
-    # print(jsondata)
     with open('graph.json', 'w') as outfile:
         json.dump(jsondata, outfile, indent=4)
 
+    tree = DecompositionTree()
     tree.decompose(dag)
     tree.merge_pnodes()
 
-    # print('Nodes in tree ({}): '.format(tree.number_of_nodes()))
-    # for node in tree.nodes():
-    #     print(node)
-
-    # print('Edges in tree ({}): '.format(tree.number_of_edges()))
-    # for edge in tree.edges():
-    #     print(edge)
-
     jsondata = json_graph.node_link_data(tree)
     jsondata['root'] = tree.root
-    # print(jsondata)
     with open('tree.json', 'w') as outfile:
         json.dump(jsondata, outfile, indent=4)
 
