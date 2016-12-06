@@ -222,23 +222,39 @@
          function edge_mouseover(edge) {
              var id = edge.source.id + "-" + edge.target.id;
              highlightRect(id);
+             highlightEdge(id);
+         }
+
+         function highlightEdge(id) {
              nodelink.select("#e" + id)
                      .style("stroke-width", "10px")
                      .style("stroke", "red");
          }
 
-         function highlightRect(id) {
+         function unhighlightEdge(id) {
+             nodelink.select("#e" + id)
+                     .style("stroke-width", "1.5px")
+                     .style("stroke", "#999");
+         }
+
+         function unhighlightRect(id) {
              dagmap.selectAll("#r" + id + ">rect")
-                   .style("fill", "white");
+                   .style("fill", function(r) { return color(r.x + r.y); });
+             dagmap.selectAll("rect")
+                   .style("opacity", 1.0);
+         }
+
+         function highlightRect(id) {
+             dagmap.selectAll("rect")
+                   .style("opacity", 0.1);
+             dagmap.selectAll("#r" + id + ">rect")
+                   .style("opacity", 1.0);
          }
 
          function edge_mouseout(edge) {
              var id = edge.source.id + "-" + edge.target.id;
-             dagmap.selectAll("#r" + id + ">rect")
-                   .style("fill", function(r) { return color(r.x + r.y); });
-             nodelink.select("#e" + id)
-                     .style("stroke-width", "1.5px")
-                     .style("stroke", "#999");
+             unhighlightEdge(id);
+             unhighlightRect(id);
          }
 
          simulation
@@ -358,17 +374,13 @@
                    .text(function(d) { return d.label; });
 
              function rectMouseOver(rect) {
-                 var id = "#" + getEdge(rect);
-                 nodelink.select(id)
-                         .style("stroke-width", "10px")
-                         .style("stroke", "red");
+                 highlightEdge(getEdge(rect));
+                 highlightRect(getEdge(rect));
              }
 
              function rectMouseOut(rect) {
-                 var id = "#" + getEdge(rect);
-                 nodelink.select(id)
-                         .style("stroke-width", "1.5px")
-                         .style("stroke", "#999");
+                 unhighlightEdge(getEdge(rect));
+                 unhighlightRect(getEdge(rect));
              }
 
              function getEdge(rect) {
@@ -376,7 +388,7 @@
                  var match = rect.label.match(re);
 
                  if (match)
-                     return "e" + match[1] + "-" + match[2];
+                     return match[1] + "-" + match[2];
                  else
                      return undefined;
              }
