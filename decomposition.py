@@ -329,7 +329,13 @@ def main():
     dag = DAG.read_dag()
 
     jsondata = json_graph.node_link_data(dag)
+    # with open('graph.json', 'w') as outfile:
+    #     json.dump(jsondata, outfile, indent=4)
+
     with open('graph.json', 'w') as outfile:
+        for link in jsondata['links']:
+            link['source'] = jsondata['nodes'][link['source']]['id']
+            link['target'] = jsondata['nodes'][link['target']]['id']
         json.dump(jsondata, outfile, indent=4)
 
     tree = DecompositionTree()

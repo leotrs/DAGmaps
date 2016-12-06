@@ -22,8 +22,8 @@
   </style>
 
   <body>
-    <svg id="dagmap" style="display: block; margin: auto"></svg>
-    <svg id="nodelink" style="display: block; margin: auto"></svg>
+    <svg id="dagmap" style="display: inline; margin: auto"></svg>
+    <svg id="nodelink" style="display: inline; margin: auto"></svg>
     <script type="text/javascript">
 
 
@@ -193,46 +193,88 @@
          /* console.log(rects);*/
      };
 
+     var simulation = d3.forceSimulation()
+                        .force("link", d3.forceLink().id( function(d) {
+                            return d.id; }))
+                        .force("charge", d3.forceManyBody())
+                        .force("center", d3.forceCenter(width / 2, height / 2));
+
      d3.json('graph.json', function(error, graph) {
          if (error) throw error;
 
-         for (var i=0; i < graph.nodes.length; i++) {
-             graph.nodes[i].x = Math.floor(Math.random() * width);
-             graph.nodes[i].y = Math.floor(Math.random() * height);
+         var link = nodelink.append("g")
+                            .attr("class", "links")
+                            .selectAll("line")
+                            .data(graph.links)
+                            .enter().append("line")
+                            .attr("id", function(d) {
+                                return "e" + d.source + "-" + d.target; })
+                            .on("mouseover", edge_mouseover)
+                            .on("mouseout", edge_mouseout);
+
+         var node = nodelink.append("g")
+                            .attr("class", "nodes")
+                            .selectAll("circle")
+                            .data(graph.nodes)
+                            .enter().append("circle")
+                            .attr("r", 10);
+
+         function edge_mouseover(edge) {
+             var id = edge.source.id + "-" + edge.target.id;
+             highlightRect(id);
+             nodelink.select("#e" + id)
+                     .style("stroke-width", "10px")
+                     .style("stroke", "red");
          }
 
-         nodelink.append("g")
-                 .attr("class", "nodes")
-                 .selectAll("circle")
-                 .data(graph.nodes)
-                 .enter().append("circle")
-                 .attr("r", 10)
-                 .attr("cx", function(d) { return d.x })
-                 .attr("cy", function(d) { return d.y });
+         function highlightRect(id) {
+             dagmap.selectAll("#r" + id + ">rect")
+                   .style("fill", "white");
+         }
 
-         nodelink.append("g")
-                 .attr("class", "links")
-                 .selectAll("line")
-                 .data(graph.links)
-                 .enter().append("line")
-                 .attr("id", function(d) {
-                     return "e" + graph.nodes[d.source].id + "-" + graph.nodes[d.target].id; })
-                 .attr("x1", function(d) { return graph.nodes[d.source].x; })
-                 .attr("y1", function(d) { return graph.nodes[d.source].y; })
-                 .attr("x2", function(d) { return graph.nodes[d.target].x; })
-                 .attr("y2", function(d) { return graph.nodes[d.target].y; });
-         /* .on("mouseover", linkMouseOver)
-          * .on("mouseout", linkMouseOut);*/
+         function edge_mouseout(edge) {
+             var id = edge.source.id + "-" + edge.target.id;
+             dagmap.selectAll("#r" + id + ">rect")
+                   .style("fill", function(r) { return color(r.x + r.y); });
+             nodelink.select("#e" + id)
+                     .style("stroke-width", "1.5px")
+                     .style("stroke", "#999");
+         }
 
-         /* function linkMouseOver(link) {
-          *     var rect = getrect(link.source, link.target);
-          *     rect.
-          * }*/
+         simulation
+             .nodes(graph.nodes)
+             .on("tick", ticked);
+
+         simulation.force("link")
+                   .links(graph.links);
+
+         function ticked() {
+             var k = 6 * simulation.alpha();
+
+             link
+                 .each(function(d) {
+                     d.source.y -= k;
+                     d.target.y += 2 * k * 0.1 * Math.sqrt(d.target.y);
+                 })
+                 .each(function(d) {
+                     if (d.source.x > d.target.x) {
+                         d.target.x -= 2 * k;
+                     } else {
+                         d.target.x += 2 * k;
+                     }
+                 })
+                 .attr("x1", function(d) { return d.source.x; })
+                 .attr("y1", function(d) { return d.source.y; })
+                 .attr("x2", function(d) { return d.target.x; })
+                 .attr("y2", function(d) { return d.target.y; });
+
+             node
+                 .attr("cx", function(d) { return d.x; })
+                 .attr("cy", function(d) { return d.y; });
+         }
 
          d3.json('tree.json', function(error, tree) {
              if (error) throw error;
-
-             t = tree;
 
              /* 3. Assign sizes to nodes of the decomposition tree T. */
              var sizes = {};
@@ -290,7 +332,16 @@
              var groups = dagmap.selectAll("g")
                                 .data(rect_array)
                                 .enter().append("g")
-                                .attr("id", function(d) { return d.label; })
+                                .attr("id", function(d) {
+                                    var re = /\((\d+), (\d+)\)/;
+                                    var match = d.label.match(re);
+                                    if (match) {
+                                        return "r" + match[1] + '-' + match[2];
+                                    } else {
+                                        return d.label;
+                                    }
+
+                                })
                                 .attr("transform", function(d) {
                                     return "translate(" + d.x + "," + d.y + ")";
                                 });
@@ -308,14 +359,16 @@
 
              function rectMouseOver(rect) {
                  var id = "#" + getEdge(rect);
-                 var foo = nodelink.select(id)
-                                   .style("stroke-width", "10px");
+                 nodelink.select(id)
+                         .style("stroke-width", "10px")
+                         .style("stroke", "red");
              }
 
              function rectMouseOut(rect) {
                  var id = "#" + getEdge(rect);
-                 var foo = nodelink.select(id)
-                                   .style("stroke-width", "1.5px");
+                 nodelink.select(id)
+                         .style("stroke-width", "1.5px")
+                         .style("stroke", "#999");
              }
 
              function getEdge(rect) {
