@@ -3,7 +3,7 @@ var fs = require('fs')
 var fileUpload = require('express-fileupload');
 var app = express();
 var path = require('path');
-var port = process.env.PORT || 3000;
+var port = process.env.PORT || 3001;
 var assert = require('assert');
 var PythonShell = require('python-shell');
 
@@ -73,6 +73,6 @@ app.get('/', function(req, res) {
 	res.sendFile(__dirname + '/index.html');
 });
 
-app.listen(3000, () => {
+app.listen(3001, () => {
 	console.log('Server started at http://localhost:' + port);
 });
