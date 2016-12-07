@@ -25,7 +25,7 @@ synthetic.end(function(err) {
 	});
 });
 
-function decompose(){
+function decompose(done){
 	var decomposition = require('child_process').spawn('python3', ['decomposition.py']);
 	fs.readFile('uploads/uploaded_ttsp.txt', function(err, data) {
 		if (err) {
@@ -35,6 +35,9 @@ function decompose(){
 		decomposition.stdin.write(data);
 		// End data write
 		decomposition.stdin.end();
+		decomposition.on('close', function(){
+			done();
+		});
 	});
 }
 
@@ -56,8 +59,10 @@ app.post('/upload', function(req, res) {
             res.status(500).send(err);
         }
         else {
-        	decompose();
-        	return res.redirect('/');
+        	decompose(function(err){
+        		return res.redirect('/');
+        	});
+        	
         }
     });
 });
