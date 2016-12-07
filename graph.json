@@ -1,0 +1,136 @@
+{
+    "multigraph": true,
+    "links": [
+        {
+            "key": 0,
+            "target": "11",
+            "source": "10"
+        },
+        {
+            "key": 0,
+            "target": "10",
+            "source": "0"
+        },
+        {
+            "key": 0,
+            "target": "1",
+            "source": "0"
+        },
+        {
+            "key": 1,
+            "target": "1",
+            "source": "0"
+        },
+        {
+            "key": 2,
+            "target": "1",
+            "source": "0"
+        },
+        {
+            "key": 3,
+            "target": "1",
+            "source": "0"
+        },
+        {
+            "key": 0,
+            "target": "8",
+            "source": "0"
+        },
+        {
+            "key": 1,
+            "target": "8",
+            "source": "0"
+        },
+        {
+            "key": 0,
+            "target": "5",
+            "source": "0"
+        },
+        {
+            "key": 0,
+            "target": "4",
+            "source": "0"
+        },
+        {
+            "key": 1,
+            "target": "4",
+            "source": "0"
+        },
+        {
+            "key": 0,
+            "target": "5",
+            "source": "4"
+        },
+        {
+            "key": 0,
+            "target": "8",
+            "source": "7"
+        },
+        {
+            "key": 0,
+            "target": "2",
+            "source": "1"
+        },
+        {
+            "key": 0,
+            "target": "7",
+            "source": "2"
+        },
+        {
+            "key": 1,
+            "target": "7",
+            "source": "2"
+        },
+        {
+            "key": 2,
+            "target": "7",
+            "source": "2"
+        },
+        {
+            "key": 0,
+            "target": "8",
+            "source": "2"
+        },
+        {
+            "key": 0,
+            "target": "2",
+            "source": "5"
+        },
+        {
+            "key": 0,
+            "target": "8",
+            "source": "11"
+        }
+    ],
+    "graph": {},
+    "nodes": [
+        {
+            "id": "10"
+        },
+        {
+            "id": "0"
+        },
+        {
+            "id": "8"
+        },
+        {
+            "id": "4"
+        },
+        {
+            "id": "7"
+        },
+        {
+            "id": "1"
+        },
+        {
+            "id": "2"
+        },
+        {
+            "id": "5"
+        },
+        {
+            "id": "11"
+        }
+    ],
+    "directed": true
+}
