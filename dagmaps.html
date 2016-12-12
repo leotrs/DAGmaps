@@ -369,7 +369,11 @@
                    .on("mouseover", rectMouseOver)
                    .on("mouseout", rectMouseOut);
 
-             groups.append("text")
+             groups.append("g")
+                   .attr("transform", function(d) {
+                       return "translate(1, 5)";
+                   })
+                   .append("text")
                    .attr("dy", "8px")
                    .text(function(d) { return d.label; });
 
