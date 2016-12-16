@@ -55,3 +55,8 @@ coverage
 
 # Benchmarking
 benchmarks/graphs
+
+# ignoirng the synthetic ttsp file and graph.json and tree.json
+/public/*.json
+/uploads/*
+synthetic_ttsp.txt
