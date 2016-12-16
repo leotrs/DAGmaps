@@ -30,7 +30,8 @@
      /*** Basic stuff ***/
 
      var width = 900,
-         height = 600;
+         height = 600,
+         radius = 10;
 
      var dagmap = d3.select("#dagmap")
                        .attr("width", width)
@@ -217,7 +218,15 @@
                             .selectAll("circle")
                             .data(graph.nodes)
                             .enter().append("circle")
-                            .attr("r", 10);
+                            .attr("r", radius);
+
+         var nodeLabels = nodelink.select(".nodes")
+                                  .selectAll("text")
+                                  .data(
+                                      nodelink.selectAll(".nodes>circle").data()
+                                  )
+                                  .enter().append("text")
+                                  .text(function(d) { return d.id; });
 
          function edge_mouseover(edge) {
              var id = edge.source.id + "-" + edge.target.id;
@@ -240,6 +249,8 @@
          function unhighlightRect(id) {
              dagmap.selectAll("#r" + id + ">rect")
                    .style("fill", function(r) { return color(r.x + r.y); });
+             dagmap.selectAll("#r" + id + ">text")
+                   .style("opacity", 0);
              dagmap.selectAll("rect")
                    .style("opacity", 1.0);
          }
@@ -248,6 +259,8 @@
              dagmap.selectAll("rect")
                    .style("opacity", 0.1);
              dagmap.selectAll("#r" + id + ">rect")
+                   .style("opacity", 1.0);
+             dagmap.selectAll("#r" + id + ">text")
                    .style("opacity", 1.0);
          }
 
@@ -287,6 +300,12 @@
              node
                  .attr("cx", function(d) { return d.x; })
                  .attr("cy", function(d) { return d.y; });
+
+             nodeLabels.attr("transform", function(d) {
+                 var x = d.x + radius,
+                     y = d.y + radius/2;
+                 return "translate(" + x + ", "+ y + ")";
+             });
          }
 
          d3.json('tree.json', function(error, tree) {
@@ -360,21 +379,21 @@
                                 })
                                 .attr("transform", function(d) {
                                     return "translate(" + d.x + "," + d.y + ")";
-                                });
+                                })
+                                .on("mouseover", rectMouseOver)
+                                .on("mouseout", rectMouseOut);
 
              groups.append("rect")
                    .attr("width", function(d) { return d.width; })
                    .attr("height", function(d) { return d.height; })
-                   .style("fill", function(d) { return color(d.y + d.x); })
-                   .on("mouseover", rectMouseOver)
-                   .on("mouseout", rectMouseOut);
+                   .style("fill", function(d) { return color(d.y + d.x); });
 
-             groups.append("g")
+             groups.append("text")
                    .attr("transform", function(d) {
                        return "translate(1, 5)";
                    })
-                   .append("text")
                    .attr("dy", "8px")
+                   .style("opacity", 0)
                    .text(function(d) { return d.label; });
 
              function rectMouseOver(rect) {
