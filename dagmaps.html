@@ -226,7 +226,9 @@
                                       nodelink.selectAll(".nodes>circle").data()
                                   )
                                   .enter().append("text")
-                                  .text(function(d) { return d.id; });
+                                  .attr("id", function(d) { return "t" + d.id; })
+                                  .text(function(d) { return d.id; })
+                                  .style("opacity", 0);
 
          function edge_mouseover(edge) {
              var id = edge.source.id + "-" + edge.target.id;
@@ -235,15 +237,35 @@
          }
 
          function highlightEdge(id) {
-             nodelink.select("#e" + id)
-                     .style("stroke-width", "10px")
-                     .style("stroke", "red");
+             if (id) {
+                 nodelink.select("#e" + id)
+                         .style("stroke-width", "10px")
+                         .style("stroke", "red");
+                 var re = /(\d+)-(\d+)/;
+                 var match = id.match(re);
+                 if (match) {
+                     nodelink.select("#t" + match[1])
+                             .style("opacity", 1.0);
+                     nodelink.select("#t" + match[2])
+                             .style("opacity", 1.0);
+                 }
+             }
          }
 
          function unhighlightEdge(id) {
-             nodelink.select("#e" + id)
-                     .style("stroke-width", "1.5px")
-                     .style("stroke", "#999");
+             if (id) {
+                 nodelink.select("#e" + id)
+                         .style("stroke-width", "1.5px")
+                         .style("stroke", "#999");
+                 var re = /(\d+)-(\d+)/;
+                 var match = id.match(re);
+                 if (match) {
+                     nodelink.select("#t" + match[1])
+                             .style("opacity", 0);
+                     nodelink.select("#t" + match[2])
+                             .style("opacity", 0);
+                 }
+             }
          }
 
          function unhighlightRect(id) {
@@ -389,12 +411,18 @@
                    .style("fill", function(d) { return color(d.y + d.x); });
 
              groups.append("text")
-                   .attr("transform", function(d) {
-                       return "translate(1, 5)";
-                   })
+                   .attr("transform", "translate(1, 5)")
                    .attr("dy", "8px")
                    .style("opacity", 0)
-                   .text(function(d) { return d.label; });
+                   .text(function(d) {
+                       var re = /(\(\d+, \d+\)).*/;
+                       var match = d.label.match(re);
+                       if (match) {
+                           return match[1];
+                       } else {
+                           return  d.label;
+                       }
+                   });
 
              function rectMouseOver(rect) {
                  highlightEdge(getEdge(rect));
