@@ -1,28 +1,28 @@
 <!DOCTYPE html>
 <html>
-
-<head>
+  <head>
     <!-- Implementation of TTSP DAGmap drawing
          https://www.emis.de/journals/JGAA/accepted/2009/TsiarasTriantafilouTollis2009.13.3.pdf -->
     <script src="https://d3js.org/d3.v4.min.js" charset="utf-8"></script>
     <script src="https://code.jquery.com/jquery-3.1.0.js"></script>
     <meta charset="UTF-8">
     <title>DAGmaps</title>
-</head>
-<style>
-.links line {
-    stroke: #999;
-    stroke-opacity: 0.6;
-}
+  </head>
 
-.nodes circle {
-    stroke: #fff;
-    stroke-width: 1.5px;
-}
-</style>
+  <style>
+   .links line {
+       stroke: #999;
+       stroke-opacity: 0.6;
+   }
 
-<body>
-    <form ref='uploadForm' id='uploadForm' action='/upload' method='post' encType="multipart/form-data">
+   .nodes circle {
+       stroke: #fff;
+       stroke-width: 1.5px;
+   }
+  </style>
+
+  <body>
+<form ref='uploadForm' id='uploadForm' action='/upload' method='post' encType="multipart/form-data">
         <input type="file" name="sampleFile" />
         <input type='submit' value='Upload!' />
         <a href='/sample_ttsp1.txt' target="_blank">Sample TTSP 1</a>
@@ -31,408 +31,427 @@
     <svg id="dagmap" style="display: inline; margin: auto"></svg>
     <svg id="nodelink" style="display: inline; margin: auto"></svg>
     <script type="text/javascript">
-    /*** Basic stuff ***/
-
-    var width = 900,
-        height = 600;
-
-    var dagmap = d3.select("#dagmap")
-        .attr("width", width)
-        .attr("height", height);
-
-    var nodelink = d3.select("#nodelink")
-        .attr("width", width)
-        .attr("height", height);
-
-    var color = d3.scaleOrdinal(d3.schemeCategory20);
-
-
-    /*** Helper Functions ***/
-
-    function getChildren(tree, node) {
-        var children = [],
-            idx = tree.nodes.map(function(e) {
-                return e.id;
-            }).indexOf(node);
-
-        for (var i = 0; i < tree.links.length; i++) {
-            if (tree.links[i].source == idx)
-                children.push(tree.links[i].target)
-        }
-
-        return children;
-    };
-
-    function isSNode(node) {
-        return node.substr(0, 1) == 'S';
-    };
-
-    function isPNode(node) {
-        return node.substr(0, 1) == 'P';
-    };
-
-
-    /*** DAGmap ***/
-
-    function layout(tree, rect, sizes, labels) {
-        /* Find a partition of rect into rectangles Ri where area(Ri)
-           is proportional to sizes[i]. */
-        var padding = 10;
-        var rects = [];
-        /* var num_rects = sizes.length;*/
-        var num_children = labels.map(
-            lab => getChildren(tree, lab).length + 1);
-        var num_rects = num_children.reduce((a, b) => a + b, 0);
-
-        /* console.log(num_children);
-         * console.log(num_rects);*/
-
-        var rect_size, x, y;
-
-        if (rect.height > rect.width) {
-            for (var i = 0; i < sizes.length; i++) {
-                rect_size = (rect.height - 2 * padding) / num_rects;
-                y = rect.y + padding;
-                if (i > 0) {
-                    for (var j = 0; j < i; j++) {
-                        y += rect_size * num_children[j];
-                    }
-                }
-                rects.push({
-                    "x": rect.x + padding,
-                    "y": y,
-                    "width": (rect.width - 2 * padding),
-                    "height": rect_size * num_children[i],
-                    "label": labels[i]
-                });
-            }
-        } else {
-            for (var i = 0; i < sizes.length; i++) {
-                rect_size = (rect.width - 2 * padding) / num_rects;
-                x = rect.x + padding;
-                if (i > 0) {
-                    for (var j = 0; j < i; j++) {
-                        x += rect_size * num_children[j];
-                    }
-                }
-                rects.push({
-                    "x": x,
-                    "y": rect.y + padding,
-                    "width": rect_size * num_children[i],
-                    "height": (rect.height - 2 * padding),
-                    "label": labels[i]
-                });
-            }
-        }
-
-        return rects;
-    }
-
-    /* Algorithm 1: TTSP DAGmap drawing (modified)
-       Tsiaras, Triantafilou, Tollis
-
-       Input: G (TTSP DAG), T (decomposition tree of G)
-
-       1. Construct the decomposition tree T of G.
-
-       2. Each vertex of G has an associated S-node of T. Except the
-       source and the sink. */
-
-    function processNode(tree, node, rects, sizes) {
-        /* console.log('processing: ' + node);*/
-        var children = getChildren(tree, node);
-
-        /* 6. If u is an S-node then
-           a) Let uL and uR be the left and right children of node u.
-           b) Assign rectangles RL = Ru and RR = Ru to nodes uL and uR
-           respectively. */
-        if (isSNode(node)) {
-            /* console.log('S!');*/
-
-            /* Every S-node has exactly 2 children. */
-            var id1 = tree.nodes[children[0]].id,
-                id2 = tree.nodes[children[1]].id;
-
-            /* rects[id1] = Object.assign({}, rects[node]);
-             * rects[id1].label = id1;
-
-             * rects[id2] = Object.assign({}, rects[node]);
-             * rects[id2].label = id2;*/
-
-            var childrenSizes = children.map(function(c) {
-                return sizes[tree.nodes[c].id];
-            });
-
-            var childrenLabels = children.map(function(c) {
-                return tree.nodes[c].id;
-            });
-
-            var childrenRects = layout(tree, rects[node], childrenSizes, childrenLabels);
-
-            for (var i = 0; i < children.length; i++) {
-                rects[tree.nodes[children[i]].id] = childrenRects[i];
-            };
-
-        }
-
-        /* 7. If u is a P-node then
-           a) Let ui be the children of u and let xi be their sizes.
-           b) Call a layout function on the rectangle Ru and the sizes
-           xi to find a partition of Ru into rectangles Ri where area(Ri)
-           is proportional to xi.
-           c) for i = 1:k, assign rectangle Ri to node ui. */
-        else if (isPNode(node)) {
-            /* console.log('P!');*/
-
-            var childrenSizes = children.map(function(c) {
-                return sizes[tree.nodes[c].id];
-            });
-
-            var childrenLabels = children.map(function(c) {
-                return tree.nodes[c].id;
-            });
-
-            var childrenRects = layout(tree, rects[node], childrenSizes, childrenLabels);
-
-            for (var i = 0; i < children.length; i++) {
-                rects[tree.nodes[children[i]].id] = childrenRects[i];
-            };
-
-        };
-        /* console.log(rects);*/
-    };
-
-    var simulation = d3.forceSimulation()
-        .force("link", d3.forceLink().id(function(d) {
-            return d.id;
-        }))
-        .force("charge", d3.forceManyBody())
-        .force("center", d3.forceCenter(width / 2, height / 2));
-
-    d3.json('graph.json', function(error, graph) {
-        if (error) throw error;
-
-        var link = nodelink.append("g")
-            .attr("class", "links")
-            .selectAll("line")
-            .data(graph.links)
-            .enter().append("line")
-            .attr("id", function(d) {
-                return "e" + d.source + "-" + d.target;
-            })
-            .on("mouseover", edge_mouseover)
-            .on("mouseout", edge_mouseout);
-
-        var node = nodelink.append("g")
-            .attr("class", "nodes")
-            .selectAll("circle")
-            .data(graph.nodes)
-            .enter().append("circle")
-            .attr("r", 10);
-
-        function edge_mouseover(edge) {
-            var id = edge.source.id + "-" + edge.target.id;
-            highlightRect(id);
-            highlightEdge(id);
-        }
-
-        function highlightEdge(id) {
-            nodelink.select("#e" + id)
-                .style("stroke-width", "10px")
-                .style("stroke", "red");
-        }
-
-        function unhighlightEdge(id) {
-            nodelink.select("#e" + id)
-                .style("stroke-width", "1.5px")
-                .style("stroke", "#999");
-        }
-
-        function unhighlightRect(id) {
-            dagmap.selectAll("#r" + id + ">rect")
-                .style("fill", function(r) {
-                    return color(r.x + r.y);
-                });
-            dagmap.selectAll("rect")
-                .style("opacity", 1.0);
-        }
-
-        function highlightRect(id) {
-            dagmap.selectAll("rect")
-                .style("opacity", 0.1);
-            dagmap.selectAll("#r" + id + ">rect")
-                .style("opacity", 1.0);
-        }
-
-        function edge_mouseout(edge) {
-            var id = edge.source.id + "-" + edge.target.id;
-            unhighlightEdge(id);
-            unhighlightRect(id);
-        }
-
-        simulation
-            .nodes(graph.nodes)
-            .on("tick", ticked);
-
-        simulation.force("link")
-            .links(graph.links);
-
-        function ticked() {
-            var k = 6 * simulation.alpha();
-
-            link
-                .each(function(d) {
-                    d.source.y -= k;
-                    d.target.y += 2 * k * 0.1 * Math.sqrt(d.target.y);
-                })
-                .each(function(d) {
-                    if (d.source.x > d.target.x) {
-                        d.target.x -= 2 * k;
-                    } else {
-                        d.target.x += 2 * k;
-                    }
-                })
-                .attr("x1", function(d) {
-                    return d.source.x;
-                })
-                .attr("y1", function(d) {
-                    return d.source.y;
-                })
-                .attr("x2", function(d) {
-                    return d.target.x;
-                })
-                .attr("y2", function(d) {
-                    return d.target.y;
-                });
-
-            node
-                .attr("cx", function(d) {
-                    return d.x;
-                })
-                .attr("cy", function(d) {
-                    return d.y;
-                });
-        }
-
-        d3.json('tree.json', function(error, tree) {
-            if (error) throw error;
-
-            /* 3. Assign sizes to nodes of the decomposition tree T. */
-            var sizes = {};
-            for (var i = 0; i < tree.nodes.length; i++) {
-                sizes[tree.nodes[i].id] = 1;
-            };
-
-            /* 4. Assign rectangle R to the root node of T. */
-            var rects = {};
-            rects[tree.root] = {
-                "label": tree.root,
-                "x": 0,
-                "y": 0,
-                "width": width,
-                "height": height
-            };
-
-            /* 5. Let u be the current node of T and Ru the rectangle
-               assigned to it. */
-            var stack = [tree.root],
-                node, rect, src, tgt;
-
-            var counter = 0;
-
-            /* Steps 6, 7, 8 are recursive over all nodes. */
-            while (stack.length > 0) {
-                counter += 1;
-                /* if (counter > 3) {
-                 *     break;
-                 * }*/
-
-                node = stack.pop();
-                rect = rects[node];
-
-                for (var i = 0; i < tree.links.length; i++) {
-                    src = tree.links[i].source;
-                    tgt = tree.links[i].target;
-
-                    if (tree.nodes[src].id == node && stack.indexOf(tgt) == -1)
-                        stack.push(tree.nodes[tgt].id);
-                }
-                processNode(tree, node, rects, sizes);
-
-                /* 8. When the above recursive procedure finishes, the rectangle
-                   assigned to a Q-node of T is also assigned to the associated
-                   edge of G. The rectangle assigned to an S-node of T is also
-                   assigned to the associated vertex of G. */
-            }
-
-            /* 9. Assign rectangle R to the source and sink of G.*/
-            /* rects[dag.source] = rects[tree.root]
-             * rects[dag.sink] = rects[tree.root]*/
-
-            /* 10. Draw vertex and/or edge rectangles. */
-            /* console.log(rects);*/
-            var rect_array = Object.keys(rects).map(function(node) {
-                return rects[node];
-            });
-
-            var groups = dagmap.selectAll("g")
-                .data(rect_array)
-                .enter().append("g")
-                .attr("id", function(d) {
-                    var re = /\((\d+), (\d+)\)/;
-                    var match = d.label.match(re);
-                    if (match) {
-                        return "r" + match[1] + '-' + match[2];
-                    } else {
-                        return d.label;
-                    }
-
-                })
-                .attr("transform", function(d) {
-                    return "translate(" + d.x + "," + d.y + ")";
-                });
-
-            groups.append("rect")
-                .attr("width", function(d) {
-                    return d.width;
-                })
-                .attr("height", function(d) {
-                    return d.height;
-                })
-                .style("fill", function(d) {
-                    return color(d.y + d.x);
-                })
-                .on("mouseover", rectMouseOver)
-                .on("mouseout", rectMouseOut);
-
-            groups.append("text")
-                .attr("dy", "8px")
-                .text(function(d) {
-                    return d.label;
-                });
-
-            function rectMouseOver(rect) {
-                highlightEdge(getEdge(rect));
-                highlightRect(getEdge(rect));
-            }
-
-            function rectMouseOut(rect) {
-                unhighlightEdge(getEdge(rect));
-                unhighlightRect(getEdge(rect));
-            }
-
-            function getEdge(rect) {
-                var re = /\((\d+),\s*(\d+)\)/;
-                var match = rect.label.match(re);
-
-                if (match)
-                    return match[1] + "-" + match[2];
-                else
-                    return undefined;
-            }
-        });
-    });
+
+
+     /*** Basic stuff ***/
+
+     var width = 900,
+         height = 600,
+         radius = 10;
+
+     var dagmap = d3.select("#dagmap")
+                       .attr("width", width)
+                       .attr("height", height);
+
+     var nodelink = d3.select("#nodelink")
+                      .attr("width", width)
+                      .attr("height", height);
+
+     var color = d3.scaleOrdinal(d3.schemeCategory20);
+
+
+     /*** Helper Functions ***/
+
+     function getChildren(tree, node) {
+         var children = [],
+             idx = tree.nodes.map(function(e) { return e.id; }).indexOf(node);
+
+         for (var i=0; i < tree.links.length; i++) {
+             if(tree.links[i].source == idx)
+                 children.push(tree.links[i].target)
+         }
+
+         return children;
+     };
+
+     function isSNode(node) {
+         return node.substr(0,1) == 'S';
+     };
+
+     function isPNode(node) {
+         return node.substr(0,1) == 'P';
+     };
+
+
+     /*** DAGmap ***/
+
+     function layout(tree, rect, sizes, labels) {
+         /* Find a partition of rect into rectangles Ri where area(Ri)
+            is proportional to sizes[i]. */
+         var padding = 10;
+         var rects = [];
+         /* var num_rects = sizes.length;*/
+         var num_children = labels.map(
+             lab => getChildren(tree, lab).length + 1);
+         var num_rects = num_children.reduce((a, b) => a + b, 0);
+
+         /* console.log(num_children);
+          * console.log(num_rects);*/
+
+         var rect_size, x, y;
+
+         if (rect.height > rect.width) {
+             for (var i=0; i < sizes.length; i++) {
+                 rect_size = (rect.height - 2*padding) / num_rects;
+                 y = rect.y + padding;
+                 if (i > 0) {
+                     for (var j=0; j < i; j++) {
+                         y += rect_size * num_children[j];
+                     }
+                 }
+                 rects.push({"x": rect.x + padding,
+                             "y": y,
+                             "width": (rect.width - 2*padding),
+                             "height": rect_size * num_children[i],
+                             "label": labels[i]});
+             }
+         }
+         else {
+             for (var i=0; i < sizes.length; i++) {
+                 rect_size = (rect.width - 2*padding) / num_rects;
+                 x = rect.x + padding;
+                 if (i > 0) {
+                     for (var j=0; j < i; j++) {
+                         x += rect_size * num_children[j];
+                     }
+                 }
+                 rects.push({"x": x,
+                             "y": rect.y + padding,
+                             "width": rect_size * num_children[i],
+                             "height": (rect.height - 2*padding),
+                             "label": labels[i]});
+             }
+         }
+
+         return rects;
+     }
+
+     /* Algorithm 1: TTSP DAGmap drawing (modified)
+        Tsiaras, Triantafilou, Tollis
+
+        Input: G (TTSP DAG), T (decomposition tree of G)
+
+        1. Construct the decomposition tree T of G.
+
+        2. Each vertex of G has an associated S-node of T. Except the
+        source and the sink. */
+
+     function processNode(tree, node, rects, sizes) {
+         /* console.log('processing: ' + node);*/
+         var children = getChildren(tree, node);
+
+         /* 6. If u is an S-node then
+            a) Let uL and uR be the left and right children of node u.
+            b) Assign rectangles RL = Ru and RR = Ru to nodes uL and uR
+            respectively. */
+         if (isSNode(node)) {
+             /* console.log('S!');*/
+
+             /* Every S-node has exactly 2 children. */
+             var id1 = tree.nodes[children[0]].id,
+                 id2 = tree.nodes[children[1]].id;
+
+             /* rects[id1] = Object.assign({}, rects[node]);
+              * rects[id1].label = id1;
+
+              * rects[id2] = Object.assign({}, rects[node]);
+              * rects[id2].label = id2;*/
+
+             var childrenSizes = children.map(function(c) {
+                 return sizes[tree.nodes[c].id];
+             });
+
+             var childrenLabels = children.map(function(c) {
+                 return tree.nodes[c].id;
+             });
+
+             var childrenRects = layout(tree, rects[node], childrenSizes, childrenLabels);
+
+             for (var i=0; i < children.length; i++) {
+                 rects[tree.nodes[children[i]].id] = childrenRects[i];
+             };
+
+         }
+
+         /* 7. If u is a P-node then
+            a) Let ui be the children of u and let xi be their sizes.
+            b) Call a layout function on the rectangle Ru and the sizes
+            xi to find a partition of Ru into rectangles Ri where area(Ri)
+            is proportional to xi.
+            c) for i = 1:k, assign rectangle Ri to node ui. */
+         else if(isPNode(node)) {
+             /* console.log('P!');*/
+
+             var childrenSizes = children.map(function(c) {
+                 return sizes[tree.nodes[c].id];
+             });
+
+             var childrenLabels = children.map(function(c) {
+                 return tree.nodes[c].id;
+             });
+
+             var childrenRects = layout(tree, rects[node], childrenSizes, childrenLabels);
+
+             for (var i=0; i < children.length; i++) {
+                 rects[tree.nodes[children[i]].id] = childrenRects[i];
+             };
+
+         };
+         /* console.log(rects);*/
+     };
+
+     var simulation = d3.forceSimulation()
+                        .force("link", d3.forceLink().id( function(d) {
+                            return d.id; }))
+                        .force("charge", d3.forceManyBody())
+                        .force("center", d3.forceCenter(width / 2, height / 2));
+
+     d3.json('graph.json', function(error, graph) {
+         if (error) throw error;
+
+         var link = nodelink.append("g")
+                            .attr("class", "links")
+                            .selectAll("line")
+                            .data(graph.links)
+                            .enter().append("line")
+                            .attr("id", function(d) {
+                                return "e" + d.source + "-" + d.target; })
+                            .on("mouseover", edge_mouseover)
+                            .on("mouseout", edge_mouseout);
+
+         var node = nodelink.append("g")
+                            .attr("class", "nodes")
+                            .selectAll("circle")
+                            .data(graph.nodes)
+                            .enter().append("circle")
+                            .attr("r", radius);
+
+         var nodeLabels = nodelink.select(".nodes")
+                                  .selectAll("text")
+                                  .data(
+                                      nodelink.selectAll(".nodes>circle").data()
+                                  )
+                                  .enter().append("text")
+                                  .attr("id", function(d) { return "t" + d.id; })
+                                  .text(function(d) { return d.id; })
+                                  .style("opacity", 0);
+
+         function edge_mouseover(edge) {
+             var id = edge.source.id + "-" + edge.target.id;
+             highlightRect(id);
+             highlightEdge(id);
+         }
+
+         function highlightEdge(id) {
+             if (id) {
+                 nodelink.select("#e" + id)
+                         .style("stroke-width", "10px")
+                         .style("stroke", "red");
+                 var re = /(\d+)-(\d+)/;
+                 var match = id.match(re);
+                 if (match) {
+                     nodelink.select("#t" + match[1])
+                             .style("opacity", 1.0);
+                     nodelink.select("#t" + match[2])
+                             .style("opacity", 1.0);
+                 }
+             }
+         }
+
+         function unhighlightEdge(id) {
+             if (id) {
+                 nodelink.select("#e" + id)
+                         .style("stroke-width", "1.5px")
+                         .style("stroke", "#999");
+                 var re = /(\d+)-(\d+)/;
+                 var match = id.match(re);
+                 if (match) {
+                     nodelink.select("#t" + match[1])
+                             .style("opacity", 0);
+                     nodelink.select("#t" + match[2])
+                             .style("opacity", 0);
+                 }
+             }
+         }
+
+         function unhighlightRect(id) {
+             dagmap.selectAll("#r" + id + ">rect")
+                   .style("fill", function(r) { return color(r.x + r.y); });
+             dagmap.selectAll("#r" + id + ">text")
+                   .style("opacity", 0);
+             dagmap.selectAll("rect")
+                   .style("opacity", 1.0);
+         }
+
+         function highlightRect(id) {
+             dagmap.selectAll("rect")
+                   .style("opacity", 0.1);
+             dagmap.selectAll("#r" + id + ">rect")
+                   .style("opacity", 1.0);
+             dagmap.selectAll("#r" + id + ">text")
+                   .style("opacity", 1.0);
+         }
+
+         function edge_mouseout(edge) {
+             var id = edge.source.id + "-" + edge.target.id;
+             unhighlightEdge(id);
+             unhighlightRect(id);
+         }
+
+         simulation
+             .nodes(graph.nodes)
+             .on("tick", ticked);
+
+         simulation.force("link")
+                   .links(graph.links);
+
+         function ticked() {
+             var k = 6 * simulation.alpha();
+
+             link
+                 .each(function(d) {
+                     d.source.y -= k;
+                     d.target.y += 2 * k * 0.1 * Math.sqrt(d.target.y);
+                 })
+                 .each(function(d) {
+                     if (d.source.x > d.target.x) {
+                         d.target.x -= 2 * k;
+                     } else {
+                         d.target.x += 2 * k;
+                     }
+                 })
+                 .attr("x1", function(d) { return d.source.x; })
+                 .attr("y1", function(d) { return d.source.y; })
+                 .attr("x2", function(d) { return d.target.x; })
+                 .attr("y2", function(d) { return d.target.y; });
+
+             node
+                 .attr("cx", function(d) { return d.x; })
+                 .attr("cy", function(d) { return d.y; });
+
+             nodeLabels.attr("transform", function(d) {
+                 var x = d.x + radius,
+                     y = d.y + radius/2;
+                 return "translate(" + x + ", "+ y + ")";
+             });
+         }
+
+         d3.json('tree.json', function(error, tree) {
+             if (error) throw error;
+
+             /* 3. Assign sizes to nodes of the decomposition tree T. */
+             var sizes = {};
+             for (var i = 0; i < tree.nodes.length; i++) {
+                 sizes[tree.nodes[i].id] = 1;
+             };
+
+             /* 4. Assign rectangle R to the root node of T. */
+             var rects = {};
+             rects[tree.root] = {"label": tree.root,
+                                 "x": 0, "y": 0,
+                                 "width": width, "height": height};
+
+             /* 5. Let u be the current node of T and Ru the rectangle
+                assigned to it. */
+             var stack = [tree.root],
+                 node, rect, src, tgt;
+
+             var counter = 0;
+
+             /* Steps 6, 7, 8 are recursive over all nodes. */
+             while (stack.length > 0) {
+                 counter += 1;
+                 /* if (counter > 3) {
+                  *     break;
+                  * }*/
+
+                 node = stack.pop();
+                 rect = rects[node];
+
+                 for (var i=0; i<tree.links.length; i++) {
+                     src = tree.links[i].source;
+                     tgt = tree.links[i].target;
+
+                     if (tree.nodes[src].id == node && stack.indexOf(tgt) == -1)
+                         stack.push(tree.nodes[tgt].id);
+                 }
+                 processNode(tree, node, rects, sizes);
+
+                 /* 8. When the above recursive procedure finishes, the rectangle
+                    assigned to a Q-node of T is also assigned to the associated
+                    edge of G. The rectangle assigned to an S-node of T is also
+                    assigned to the associated vertex of G. */
+             }
+
+             /* 9. Assign rectangle R to the source and sink of G.*/
+             /* rects[dag.source] = rects[tree.root]
+              * rects[dag.sink] = rects[tree.root]*/
+
+             /* 10. Draw vertex and/or edge rectangles. */
+             /* console.log(rects);*/
+             var rect_array = Object.keys(rects).map(function (node) {
+                 return rects[node]; });
+
+             var groups = dagmap.selectAll("g")
+                                .data(rect_array)
+                                .enter().append("g")
+                                .attr("id", function(d) {
+                                    var re = /\((\d+), (\d+)\)/;
+                                    var match = d.label.match(re);
+                                    if (match) {
+                                        return "r" + match[1] + '-' + match[2];
+                                    } else {
+                                        return d.label;
+                                    }
+
+                                })
+                                .attr("transform", function(d) {
+                                    return "translate(" + d.x + "," + d.y + ")";
+                                })
+                                .on("mouseover", rectMouseOver)
+                                .on("mouseout", rectMouseOut);
+
+             groups.append("rect")
+                   .attr("width", function(d) { return d.width; })
+                   .attr("height", function(d) { return d.height; })
+                   .style("fill", function(d) { return color(d.y + d.x); });
+
+             groups.append("text")
+                   .attr("transform", "translate(1, 5)")
+                   .attr("dy", "8px")
+                   .style("opacity", 0)
+                   .text(function(d) {
+                       var re = /(\(\d+, \d+\)).*/;
+                       var match = d.label.match(re);
+                       if (match) {
+                           return match[1];
+                       } else {
+                           return  d.label;
+                       }
+                   });
+
+             function rectMouseOver(rect) {
+                 highlightEdge(getEdge(rect));
+                 highlightRect(getEdge(rect));
+             }
+
+             function rectMouseOut(rect) {
+                 unhighlightEdge(getEdge(rect));
+                 unhighlightRect(getEdge(rect));
+             }
+
+             function getEdge(rect) {
+                 var re = /\((\d+),\s*(\d+)\)/;
+                 var match = rect.label.match(re);
+
+                 if (match)
+                     return match[1] + "-" + match[2];
+                 else
+                     return undefined;
+             }
+         });
+     });
+
     </script>
-</body>
-
+  </body>
 </html>
